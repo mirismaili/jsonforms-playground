@@ -3,6 +3,7 @@ import {materialCells, materialRenderers} from '@jsonforms/material-renderers'
 import {JsonForms} from '@jsonforms/react'
 import {Box, Grid, makeStyles, TextField} from '@material-ui/core'
 import React, {useEffect, useRef, useState} from 'react'
+import ErrorBoundary from './ErrorBoundary'
 import initialSchema from './schema.json'
 import initialUiSchema from './uiSchema.json'
 
@@ -75,20 +76,22 @@ function App () {
 				<Grid item xs={12} md={6}>
 					<Box mx={2}>
 						<div className={classes.demoForm}>
-							<JsonForms
-									schema={schema}
-									uischema={uiSchema}
-									data={data}
-									renderers={renderers}
-									cells={materialCells}
-									onChange={(event) => {
-										// console.debug(event.errors)
-										if (!deepEqual(data, event.data)) {
-											console.debug('Data edited from FORM')
-											setData(event.data)
-										}
-									}}
-							/>
+							<ErrorBoundary>
+								<JsonForms
+										schema={schema}
+										uischema={uiSchema}
+										data={data}
+										renderers={renderers}
+										cells={materialCells}
+										onChange={(event) => {
+											// console.debug(event.errors)
+											if (!deepEqual(data, event.data)) {
+												console.debug('Data edited from FORM')
+												setData(event.data)
+											}
+										}}
+								/>
+							</ErrorBoundary>
 						</div>
 					</Box>
 				</Grid>
