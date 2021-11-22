@@ -1,3 +1,4 @@
+import deepEqual from '@graphix/deep-equal'
 import {materialCells, materialRenderers} from '@jsonforms/material-renderers'
 import {JsonForms} from '@jsonforms/react'
 import {Box, Grid, makeStyles, TextField} from '@material-ui/core'
@@ -80,7 +81,13 @@ function App () {
 									data={data}
 									renderers={renderers}
 									cells={materialCells}
-									onChange={({errors, data}) => setData(data)}
+									onChange={(event) => {
+										// console.debug(event.errors)
+										if (!deepEqual(data, event.data)) {
+											console.debug('Data edited from FORM')
+											setData(event.data)
+										}
+									}}
 							/>
 						</div>
 					</Box>
@@ -92,7 +99,11 @@ function App () {
 								{...muiTextFieldsCommonProps}
 								onChange={(event) => {
 									try {
-										setData(JSON.parse(event.target.value))
+										const newData = JSON.parse(event.target.value)
+										if (!deepEqual(data, newData)) {
+											console.debug('Data edited from EDITOR')
+											setData(newData)
+										}
 										setDataError(null)
 									} catch (e) {
 										setDataError('JSON Parse Error!')
