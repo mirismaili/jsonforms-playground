@@ -8,9 +8,9 @@ export default class ErrorBoundary extends React.Component {
 		}
 	}
 	
-	static getDerivedStateFromError (error, ...args) {
-		console.log({error})
-		return {error: error}
+	static getDerivedStateFromError (error) {
+		console.error(error)
+		return {error}
 	}
 	
 	componentDidCatch (error, errorInfo) {
@@ -19,9 +19,9 @@ export default class ErrorBoundary extends React.Component {
 	
 	render () {
 		if (this.state.error) {
-			return <div style={{color: 'red', overflow: 'scroll'}}>
+			return <div style={{color: 'crimson', overflow: 'scroll'}}>
 				<h3>OOPS! Something went wrong!</h3>
-				<pre>{this.state.error.message}</pre>
+				<h5>{this.state.error.message}</h5>
 				<pre>{this.state.error.stack}</pre>
 			</div>
 		}

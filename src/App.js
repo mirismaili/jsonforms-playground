@@ -17,23 +17,12 @@ const initialData = {
 	rating: 3,
 }
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles(() => ({
 	container: {
 		padding: '1em',
 		width: '100%',
 	},
-	title: {
-		padding: '0.25em',
-	},
-	dataContent: {
-		fontFamily: 'monospace !important',
-	},
-	resetButton: {
-		margin: 'auto',
-		display: 'block',
-	},
 	demoForm: {
-		margin: 'auto',
 		padding: '1rem',
 	},
 }))
@@ -68,11 +57,7 @@ function App () {
 	}
 	
 	return (
-			<Grid
-					container
-					spacing={1}
-					className={classes.container}
-			>
+			<Grid container spacing={1} className={classes.container}>
 				<Grid item xs={12} md={6}>
 					<Box mx={2}>
 						<div className={classes.demoForm}>
@@ -85,6 +70,7 @@ function App () {
 										cells={materialCells}
 										onChange={(event) => {
 											// console.debug(event.errors)
+											console.debug('FORM changed')
 											if (!deepEqual(data, event.data)) {
 												console.debug('Data edited from FORM')
 												setData(event.data)
@@ -96,61 +82,64 @@ function App () {
 					</Box>
 				</Grid>
 				
-				<Grid item xs={12} md={6}>
-					<Box mx={2}>
+				<Grid item dir="ltr" xs={12} md={6}>
+					<Box mb={2}>
 						<TextField
 								{...muiTextFieldsCommonProps}
 								onChange={(event) => {
+									console.debug('DATA-EDITOR changed')
 									try {
 										const newData = JSON.parse(event.target.value)
 										if (!deepEqual(data, newData)) {
 											console.debug('Data edited from EDITOR')
 											setData(newData)
 										}
-										setDataError(null)
+										setDataError('')
 									} catch (e) {
-										setDataError('JSON Parse Error!')
+										setDataError('Invalid JSON!')
 									}
 								}}
 								error={!!dataError}
-								helperText={dataError ? dataError : ' '}
+								helperText={' ' + dataError}
 								label="Data"
 								inputRef={(node) => { dataInputField.current = node }}
 						/>
 					</Box>
 					
-					<Box mx={2}>
+					<Box mb={2}>
 						<TextField
 								{...muiTextFieldsCommonProps}
 								onChange={(event) => {
+									console.debug('UI-SCHEMA-EDITOR changed')
 									try {
 										setUiSchema(JSON.parse(event.target.value))
-										setUiSchemaError(null)
+										setUiSchemaError('')
 									} catch (e) {
-										setUiSchemaError('JSON Parse Error!')
+										setUiSchemaError('Invalid JSON!')
 									}
 								}}
 								defaultValue={JSON.stringify(uiSchema, null, 2)}
 								error={!!uiSchemaError}
-								helperText={uiSchemaError ? uiSchemaError : ' '}
+								helperText={' ' + uiSchemaError}
 								label="UI-Schema"
 						/>
 					</Box>
 					
-					<Box mx={2}>
+					<Box mb={2}>
 						<TextField
 								{...muiTextFieldsCommonProps}
 								onChange={(event) => {
+									console.debug('SCHEMA-EDITOR changed')
 									try {
 										setSchema(JSON.parse(event.target.value))
-										setSchemaError(null)
+										setSchemaError('')
 									} catch (e) {
-										setSchemaError('JSON Parse Error!')
+										setSchemaError('Invalid JSON!')
 									}
 								}}
 								defaultValue={JSON.stringify(schema, null, 2)}
 								error={!!schemaError}
-								helperText={schemaError ? schemaError : ' '}
+								helperText={' ' + schemaError}
 								label="Schema"
 						/>
 					</Box>
