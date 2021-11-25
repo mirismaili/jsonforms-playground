@@ -320,7 +320,8 @@ module.exports = function (webpackEnv) {
 				// Handle node_modules packages that contain sourcemaps
 				shouldUseSourceMap && {
 					enforce: 'pre',
-					exclude: /@babel(?:\/|\\{1,2})runtime/,
+					// `dompurify` is for `monaco-editor` (monaco-editor\esm\vs\base\browser\dompurify\purify.es.js)
+					exclude: /@babel(?:\/|\\{1,2})runtime|(?:\/|\\{1,2})dompurify(?:\/|\\{1,2})/,
 					test: /\.(js|mjs|jsx|ts|tsx|css)$/,
 					loader: require.resolve('source-map-loader'),
 				},

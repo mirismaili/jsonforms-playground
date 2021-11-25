@@ -1,9 +1,10 @@
 import deepEqual from '@graphix/deep-equal'
 import {materialCells, materialRenderers} from '@jsonforms/material-renderers'
 import {JsonForms} from '@jsonforms/react'
-import {Box, Grid, makeStyles, TextField, Typography} from '@material-ui/core'
-import React, {useEffect, useRef, useState} from 'react'
+import {Box, Grid, makeStyles, Typography} from '@material-ui/core'
+import React, {useReducer, useRef, useState} from 'react'
 import ErrorBoundary from './ErrorBoundary'
+import JsonEditor, {DONT_UPDATE_CONTENT} from './JsonEditor'
 import initialSchema from './schema.json'
 import initialUiSchema from './uiSchema.json'
 
@@ -17,151 +18,180 @@ const initialData = {
 	rating: 3,
 }
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
 	container: {
-		padding: '1em',
+		margin: 0,
+		padding: theme.spacing(1),
 		width: '100%',
+		flexGrow: 1,
 	},
-	demoForm: {
-		padding: '1rem',
+	form: {
+		padding: theme.spacing(1),
+	},
+	editorsGrid: {
+		[theme.breakpoints.down('lg')]: {
+			height: '50%',
+		},
+	},
+	editorContainer: {
+		height: '100%',
+		position: 'relative', // is necessary to position the children as absolute
+	},
+	editorLabel: {
+		position: 'absolute',
+		top: 0,
+		left: theme.spacing(1.5),
+		padding: theme.spacing(0, 0.5),
+		backgroundColor: 'white',
+	},
+	editor: {
+		position: 'absolute',
+		top: theme.spacing(1.7), // match upper-bound behind the label
+		bottom: 0,
+		left: 0,
+		right: 0,
+		boxShadow: `0 0 4px ${theme.palette.type === 'dark' ? 'white' : 'black'}`,
+		borderRadius: theme.spacing(0.5),
+		paddingTop: theme.spacing(2), // a little far from the label
+		marginBottom: theme.spacing(2), // Fix monaco-editor over-size issue
 	},
 }))
 
 function App () {
 	const classes = useStyles()
-	const [data, setData] = useState(initialData)
-	const [schema, setSchema] = useState(initialSchema)
-	const [uiSchema, setUiSchema] = useState(initialUiSchema)
 	
-	const [dataError, setDataError] = useState('')
-	const [uiSchemaError, setUiSchemaError] = useState('')
-	const [schemaError, setSchemaError] = useState('')
+	const dataRef = useRef(initialData)
+	const [dataError, setDataError] = useState('') // noinspection JSCheckFunctionSignatures
+	const [dataUpdated, dataUpdatedFrom] = useReducer((_, from) => ({from}), {from: ''})
+	
+	const schemaRef = useRef(initialSchema)
+	const [schemaError, setSchemaError] = useState('') // noinspection JSCheckFunctionSignatures
+	const [schemaUpdated, schemaUpdatedFrom] = useReducer((_, from) => ({from}), {from: ''})
+	
+	const uiSchemaRef = useRef(initialUiSchema)
+	const [uiSchemaError, setUiSchemaError] = useState('') // noinspection JSCheckFunctionSignatures
+	const [uiSchemaUpdated, uiSchemaUpdatedFrom] = useReducer((_, from) => ({from}), {from: ''})
 	
 	const [jsonFormError, setJsonFormError] = useState(null)
 	
-	const dataInputField = useRef(null)
-	
-	const dataAsString = JSON.stringify(data, null, 2)
-	
-	useEffect(() => {
-		if (dataInputField.current.value !== dataAsString) {
-			dataInputField.current.value = dataAsString
-		}
-	}, [dataAsString])
-	
-	const muiTextFieldsCommonProps = {
-		InputProps: {style: {fontFamily: 'monospace'}},
-		multiline: true,
-		fullWidth: true,
-		minRows: 10,
-		maxRows: 10,
-		variant: 'outlined',
-	}
-	
 	return (
-			<Grid container spacing={1} className={classes.container}>
-				<Grid item xs={12} md={6}>
-					<Box mx={2}>
-						<div className={classes.demoForm}>
+			<>
+				<Grid container spacing={2} className={classes.container}>
+					<Grid item xs={12} md={6} xl={3} className={classes.editorsGrid}>
+						<Editor
+								dataRef={schemaRef}
+								dataError={schemaError}
+								setDataError={setSchemaError}
+								dataUpdated={schemaUpdated}
+								dataUpdatedFrom={schemaUpdatedFrom}
+								editorName="schema-editor"
+								dataName="Schema"
+								setJsonFormError={setJsonFormError}
+						/>
+					</Grid>
+					
+					<Grid item xs={12} md={6} xl={3} className={classes.editorsGrid}>
+						<Editor
+								dataRef={uiSchemaRef}
+								dataError={uiSchemaError}
+								setDataError={setUiSchemaError}
+								dataUpdated={uiSchemaUpdated}
+								dataUpdatedFrom={uiSchemaUpdatedFrom}
+								editorName="ui-schema-editor"
+								dataName="UI-Schema"
+								setJsonFormError={setJsonFormError}
+						/>
+					</Grid>
+					
+					<Grid item xs={12} md={6} xl={3} className={classes.editorsGrid}>
+						<Editor
+								dataRef={dataRef}
+								dataError={dataError}
+								setDataError={setDataError}
+								dataUpdated={dataUpdated}
+								dataUpdatedFrom={dataUpdatedFrom}
+								editorName="data-editor"
+								dataName="Data"
+								setJsonFormError={setJsonFormError}
+						/>
+					</Grid>
+					
+					<Grid item xs={12} md={6} xl={3}>
+						<div className={classes.form}>
 							<ErrorBoundary setError={setJsonFormError}>
 								{jsonFormError
 										? (
 												<Box sx={{color: 'red', overflowX: 'scroll'}}>
-													<Typography component="h5" variant="h5">OOPS! Something went wrong!</Typography>
+													<Typography component="h6" variant="h6">OOPS! Something went wrong!</Typography>
 													<Typography component="pre"
 																	style={{fontFamily: 'Monospace'}}>{jsonFormError.message}</Typography>
 													<Typography component="pre"
 																	style={{fontFamily: 'Monospace'}}>{jsonFormError.stack}</Typography>
 												</Box>
 										)
-										: <JsonForms
-												schema={schema}
-												uischema={uiSchema}
-												data={data}
+										:
+										<JsonForms
+												schema={schemaRef.current}
+												uischema={uiSchemaRef.current}
+												data={dataRef.current}
 												renderers={renderers}
 												cells={materialCells}
 												onChange={(event) => {
 													// console.debug(event.errors)
 													console.debug('FORM changed')
-													if (!deepEqual(data, event.data)) {
-														console.debug('Data edited from FORM')
-														setData(event.data)
+													if (!deepEqual(dataRef.current, event.data)) {
+														dataRef.current = event.data
 														setJsonFormError(false)
+														dataUpdatedFrom('form')
+														console.debug('Data updated from FORM')
 													}
 												}}
 										/>}
 							</ErrorBoundary>
 						</div>
-					</Box>
+					</Grid>
 				</Grid>
-				
-				<Grid item dir="ltr" xs={12} md={6}>
-					<Box mb={2}>
-						<TextField
-								{...muiTextFieldsCommonProps}
-								onChange={(event) => {
-									console.debug('DATA-EDITOR changed')
-									try {
-										const newData = JSON.parse(event.target.value)
-										if (!deepEqual(data, newData)) {
-											console.debug('Data edited from EDITOR')
-											setData(newData)
-											setJsonFormError(false)
-										}
-										setDataError('')
-									} catch (e) {
-										setDataError('Invalid JSON!')
-									}
-								}}
-								error={!!dataError}
-								helperText={' ' + dataError}
-								label="Data"
-								inputRef={(node) => { dataInputField.current = node }}
-						/>
-					</Box>
-					
-					<Box mb={2}>
-						<TextField
-								{...muiTextFieldsCommonProps}
-								onChange={(event) => {
-									console.debug('UI-SCHEMA-EDITOR changed')
-									try {
-										setUiSchema(JSON.parse(event.target.value))
-										setUiSchemaError('')
-										setJsonFormError(false)
-									} catch (e) {
-										setUiSchemaError('Invalid JSON!')
-									}
-								}}
-								defaultValue={JSON.stringify(uiSchema, null, 2)}
-								error={!!uiSchemaError}
-								helperText={' ' + uiSchemaError}
-								label="UI-Schema"
-						/>
-					</Box>
-					
-					<Box mb={2}>
-						<TextField
-								{...muiTextFieldsCommonProps}
-								onChange={(event) => {
-									console.debug('SCHEMA-EDITOR changed')
-									try {
-										setSchema(JSON.parse(event.target.value))
-										setSchemaError('')
-										setJsonFormError(false)
-									} catch (e) {
-										setSchemaError('Invalid JSON!')
-									}
-								}}
-								defaultValue={JSON.stringify(schema, null, 2)}
-								error={!!schemaError}
-								helperText={' ' + schemaError}
-								label="Schema"
-						/>
-					</Box>
-				</Grid>
-			</Grid>
+			</>
 	)
 }
 
 export default React.memo(App)
+
+const Editor = ({
+	dataRef, dataError, setDataError, dataUpdated, dataUpdatedFrom, editorName, dataName, setJsonFormError,
+}) => {
+	const classes = useStyles()
+	
+	const content = dataUpdated.from === editorName
+			? DONT_UPDATE_CONTENT
+			: JSON.stringify(dataRef.current, null, 2)
+	
+	const onTextChanged = (newText) => {
+		console.debug(`${editorName.toUpperCase()} changed`)
+		try {
+			const newData = JSON.parse(newText)
+			if (!deepEqual(dataRef.current, newData)) {
+				dataRef.current = newData
+				setJsonFormError(false)
+				dataUpdatedFrom(editorName)
+				console.debug(`${dataName} updated from EDITOR`)
+			}
+			setDataError('')
+		} catch (e) {
+			setDataError('Invalid JSON!')
+		}
+	}
+	
+	return (
+			<div dir="ltr" className={classes.editorContainer}>
+				<JsonEditor
+						className={classes.editor}
+						uri={`json://${editorName}.json`}
+						style={dataError ? {boxShadow: '0 0 4px red'} : {}}
+						content={content}
+						onTextChanged={onTextChanged}
+				/>
+				<Typography color="textSecondary" className={classes.editorLabel}>{dataName}</Typography>
+			</div>
+	)
+}
