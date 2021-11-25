@@ -1,7 +1,7 @@
 import deepEqual from '@graphix/deep-equal'
 import {materialCells, materialRenderers} from '@jsonforms/material-renderers'
 import {JsonForms} from '@jsonforms/react'
-import {Box, Grid, makeStyles, TextField} from '@material-ui/core'
+import {Box, Grid, makeStyles, TextField, Typography} from '@material-ui/core'
 import React, {useEffect, useRef, useState} from 'react'
 import ErrorBoundary from './ErrorBoundary'
 import initialSchema from './schema.json'
@@ -37,6 +37,8 @@ function App () {
 	const [uiSchemaError, setUiSchemaError] = useState('')
 	const [schemaError, setSchemaError] = useState('')
 	
+	const [jsonFormError, setJsonFormError] = useState(null)
+	
 	const dataInputField = useRef(null)
 	
 	const dataAsString = JSON.stringify(data, null, 2)
@@ -61,22 +63,33 @@ function App () {
 				<Grid item xs={12} md={6}>
 					<Box mx={2}>
 						<div className={classes.demoForm}>
-							<ErrorBoundary>
-								<JsonForms
-										schema={schema}
-										uischema={uiSchema}
-										data={data}
-										renderers={renderers}
-										cells={materialCells}
-										onChange={(event) => {
-											// console.debug(event.errors)
-											console.debug('FORM changed')
-											if (!deepEqual(data, event.data)) {
-												console.debug('Data edited from FORM')
-												setData(event.data)
-											}
-										}}
-								/>
+							<ErrorBoundary setError={setJsonFormError}>
+								{jsonFormError
+										? (
+												<Box sx={{color: 'red', overflowX: 'scroll'}}>
+													<Typography component="h5" variant="h5">OOPS! Something went wrong!</Typography>
+													<Typography component="pre"
+																	style={{fontFamily: 'Monospace'}}>{jsonFormError.message}</Typography>
+													<Typography component="pre"
+																	style={{fontFamily: 'Monospace'}}>{jsonFormError.stack}</Typography>
+												</Box>
+										)
+										: <JsonForms
+												schema={schema}
+												uischema={uiSchema}
+												data={data}
+												renderers={renderers}
+												cells={materialCells}
+												onChange={(event) => {
+													// console.debug(event.errors)
+													console.debug('FORM changed')
+													if (!deepEqual(data, event.data)) {
+														console.debug('Data edited from FORM')
+														setData(event.data)
+														setJsonFormError(false)
+													}
+												}}
+										/>}
 							</ErrorBoundary>
 						</div>
 					</Box>
@@ -93,6 +106,7 @@ function App () {
 										if (!deepEqual(data, newData)) {
 											console.debug('Data edited from EDITOR')
 											setData(newData)
+											setJsonFormError(false)
 										}
 										setDataError('')
 									} catch (e) {
@@ -114,6 +128,7 @@ function App () {
 									try {
 										setUiSchema(JSON.parse(event.target.value))
 										setUiSchemaError('')
+										setJsonFormError(false)
 									} catch (e) {
 										setUiSchemaError('Invalid JSON!')
 									}
@@ -133,6 +148,7 @@ function App () {
 									try {
 										setSchema(JSON.parse(event.target.value))
 										setSchemaError('')
+										setJsonFormError(false)
 									} catch (e) {
 										setSchemaError('Invalid JSON!')
 									}
