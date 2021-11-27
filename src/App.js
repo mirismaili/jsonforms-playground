@@ -2,9 +2,9 @@ import deepEqual from '@graphix/deep-equal'
 import {materialCells, materialRenderers} from '@jsonforms/material-renderers'
 import {JsonForms} from '@jsonforms/react'
 import {Box, Grid, makeStyles, Typography} from '@material-ui/core'
-import React, {useReducer, useRef, useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import ErrorBoundary from './ErrorBoundary'
-import JsonEditor, {DONT_UPDATE_CONTENT} from './JsonEditor'
+import JsonEditor from './JsonEditor'
 import initialSchema from './schema.json'
 import initialUiSchema from './uiSchema.json'
 
@@ -60,17 +60,14 @@ const useStyles = makeStyles((theme) => ({
 function App () {
 	const classes = useStyles()
 	
-	const dataRef = useRef(initialData)
+	const [data, setData] = useState()
 	const [dataError, setDataError] = useState('') // noinspection JSCheckFunctionSignatures
-	const [dataUpdated, dataUpdatedFrom] = useReducer((_, from) => ({from}), {from: ''})
 	
-	const schemaRef = useRef(initialSchema)
+	const [schema, setSchema] = useState()
 	const [schemaError, setSchemaError] = useState('') // noinspection JSCheckFunctionSignatures
-	const [schemaUpdated, schemaUpdatedFrom] = useReducer((_, from) => ({from}), {from: ''})
 	
-	const uiSchemaRef = useRef(initialUiSchema)
+	const [uiSchema, setUiSchema] = useState()
 	const [uiSchemaError, setUiSchemaError] = useState('') // noinspection JSCheckFunctionSignatures
-	const [uiSchemaUpdated, uiSchemaUpdatedFrom] = useReducer((_, from) => ({from}), {from: ''})
 	
 	const [jsonFormError, setJsonFormError] = useState(null)
 	
@@ -79,11 +76,11 @@ function App () {
 				<Grid container spacing={2} className={classes.container}>
 					<Grid item xs={12} md={6} xl={3} className={classes.editorsGrid}>
 						<Editor
-								dataRef={schemaRef}
+								initialData={initialSchema}
+								data={schema}
+								setData={setSchema}
 								dataError={schemaError}
 								setDataError={setSchemaError}
-								dataUpdated={schemaUpdated}
-								dataUpdatedFrom={schemaUpdatedFrom}
 								editorName="schema-editor"
 								dataName="Schema"
 								setJsonFormError={setJsonFormError}
@@ -92,11 +89,11 @@ function App () {
 					
 					<Grid item xs={12} md={6} xl={3} className={classes.editorsGrid}>
 						<Editor
-								dataRef={uiSchemaRef}
+								initialData={initialUiSchema}
+								data={uiSchema}
+								setData={setUiSchema}
 								dataError={uiSchemaError}
 								setDataError={setUiSchemaError}
-								dataUpdated={uiSchemaUpdated}
-								dataUpdatedFrom={uiSchemaUpdatedFrom}
 								editorName="ui-schema-editor"
 								dataName="UI-Schema"
 								setJsonFormError={setJsonFormError}
@@ -105,11 +102,11 @@ function App () {
 					
 					<Grid item xs={12} md={6} xl={3} className={classes.editorsGrid}>
 						<Editor
-								dataRef={dataRef}
+								initialData={initialData}
+								data={data}
+								setData={setData}
 								dataError={dataError}
 								setDataError={setDataError}
-								dataUpdated={dataUpdated}
-								dataUpdatedFrom={dataUpdatedFrom}
 								editorName="data-editor"
 								dataName="Data"
 								setJsonFormError={setJsonFormError}
@@ -130,19 +127,18 @@ function App () {
 												</Box>
 										)
 										:
-										<JsonForms
-												schema={schemaRef.current}
-												uischema={uiSchemaRef.current}
-												data={dataRef.current}
+										<Form
+												schema={schema}
+												uiSchema={uiSchema}
+												data={data}
 												renderers={renderers}
 												cells={materialCells}
 												onChange={(event) => {
 													// console.debug(event.errors)
-													console.debug('FORM changed')
-													if (!deepEqual(dataRef.current, event.data)) {
-														dataRef.current = event.data
+													console.debug('FORM changed'/*, event.data, data*/)
+													if (!deepEqual(data, event.data)) {
+														setData(event.data)
 														setJsonFormError(false)
-														dataUpdatedFrom('form')
 														console.debug('Data updated from FORM')
 													}
 												}}
@@ -157,29 +153,88 @@ function App () {
 
 export default React.memo(App)
 
-const Editor = ({
-	dataRef, dataError, setDataError, dataUpdated, dataUpdatedFrom, editorName, dataName, setJsonFormError,
-}) => {
+function Form ({schema, uiSchema, data, renderers, cells, onChange}) {
+	if ([data, schema, uiSchema].includes(undefined)) {
+		return <></>
+	}
+	
+	return (
+			<JsonForms
+					schema={schema}
+					uischema={uiSchema}
+					data={data}
+					renderers={renderers}
+					cells={cells}
+					onChange={onChange}
+			/>
+	)
+}
+
+function Editor ({
+	initialData,
+	data,
+	setData,
+	dataError,
+	setDataError,
+	editorName,
+	dataName,
+	setJsonFormError,
+}) {
 	const classes = useStyles()
 	
-	const content = dataUpdated.from === editorName
-			? DONT_UPDATE_CONTENT
-			: JSON.stringify(dataRef.current, null, 2)
+	const [parsedContent, setParsedContent] = useState()
+	const [content, setContent] = useState()
+	const [contentUpdatedFromEditor, setContentUpdatedFromEditor] = useState(false)
 	
-	const onTextChanged = (newText) => {
-		console.debug(`${editorName.toUpperCase()} changed`)
+	useEffect(() => {
+		console.debug(`useEffect: ${dataName} content`,/* content,*/ contentUpdatedFromEditor || data !== parsedContent)
+		
+		if (content === undefined) return
+		
+		if (!contentUpdatedFromEditor && data === parsedContent) {
+			return
+		}
+		
 		try {
-			const newData = JSON.parse(newText)
-			if (!deepEqual(dataRef.current, newData)) {
-				dataRef.current = newData
-				setJsonFormError(false)
-				dataUpdatedFrom(editorName)
-				console.debug(`${dataName} updated from EDITOR`)
-			}
+			setParsedContent(JSON.parse(content))
 			setDataError('')
 		} catch (e) {
 			setDataError('Invalid JSON!')
 		}
+	}, [content])
+	
+	useEffect(() => {
+		console.debug(`useEffect: ${dataName} parsedContent`/*, parsedContent*/)
+		
+		if (parsedContent === undefined) return
+		
+		if (deepEqual(data, parsedContent)) {
+			return
+		}
+		setData(parsedContent)
+		setJsonFormError(false)
+		
+		console.debug(`${dataName} updated from ${editorName.toUpperCase()}`)
+	}, [parsedContent])
+	
+	useEffect(() => {
+		console.debug(`useEffect: ${dataName} data`, /*data,*/ !deepEqual(data, parsedContent))
+		
+		if (data === undefined) return
+		
+		if (deepEqual(data, parsedContent)) return
+		
+		console.debug(`${editorName} will be updated`)
+		
+		setContent(JSON.stringify(data, null, 2))
+		setContentUpdatedFromEditor(false)
+		setParsedContent(data)
+	}, [data])
+	
+	const onTextChanged = (newContent) => {
+		console.debug(`${editorName.toUpperCase()}: New content`/*, newContent*/)
+		setContent(newContent)
+		setContentUpdatedFromEditor(true)
 	}
 	
 	return (
@@ -188,6 +243,7 @@ const Editor = ({
 						className={classes.editor}
 						uri={`json://${editorName}.json`}
 						style={dataError ? {boxShadow: '0 0 4px red'} : {}}
+						initialContent={JSON.stringify(initialData, null, 2)}
 						content={content}
 						onTextChanged={onTextChanged}
 				/>

@@ -1,7 +1,6 @@
 import {editor as monacoEditor, languages, Uri} from 'monaco-editor'
 import React, {useEffect, useLayoutEffect, useRef} from 'react'
 
-window.Uri = Uri
 // noinspection JSUnusedGlobalSymbols
 window.MonacoEnvironment = {
 	getWorker (moduleId, label) {
@@ -17,89 +16,91 @@ window.MonacoEnvironment = {
 	},
 }
 
-languages.json.jsonDefaults.setDiagnosticsOptions({
+const sampleContent = `{
+	"name": "jsonforms-playground",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+	"start": [
+		"node scripts/start.js",
+		"node scripts/build.js"
+	],
+	"build-for-gh-pages": "cross-env GENERATE_SOURCEMAP=false BUILD_PATH=dist PUBLIC_URL=dist node scripts/build.js && mv dist/index.html index.html",
+	"test": "node scripts/test.js"
+	}
+}`
+
+const sampleSchema = {
+	uri: 'json://data-editor.json',
+	fileMatch: ['schema-editor.json'],
+	schema: {
+		type: 'object',
+		properties: {
+			property: {
+				description: 'I have a description',
+			},
+			titledProperty: {
+				title: 'I have a title',
+				description: 'I also have a description',
+			},
+			markdown: {
+				markdownDescription: 'Even **markdown** _descriptions_ `are` ~~not~~ supported!',
+			},
+			enum: {
+				description: 'Pick your starter',
+				enum: ['Bulbasaur', 'Squirtle', 'Charmander', 'Pikachu'],
+			},
+			number: {
+				description: 'Numbers work!',
+				minimum: 42,
+				maximum: 1337,
+			},
+			boolean: {
+				description: 'Are boolean supported?',
+				type: 'boolean',
+			},
+			string: {
+				type: 'string',
+			},
+			reference: {
+				description: 'JSON schemas can be referenced, even recursively',
+				$ref: '#',
+			},
+			array: {
+				description: 'It also works in arrays',
+				items: {
+					$ref: '#',
+				},
+			},
+		},
+	},
+}
+
+const diagnosticsOptions = {
 	validate: true,
 	enableSchemaRequest: true,
 	format: true,
 	hover: true,
 	completion: true,
-	schemas: [{
-		uri: 'json://data-editor.json',
-		fileMatch: ['schema-editor.json'],
-		schema: {
-			type: 'object',
-			properties: {
-				property: {
-					description: 'I have a description',
-				},
-				titledProperty: {
-					title: 'I have a title',
-					description: 'I also have a description',
-				},
-				markdown: {
-					markdownDescription: 'Even **markdown** _descriptions_ `are` ~~not~~ supported!',
-				},
-				enum: {
-					description: 'Pick your starter',
-					enum: ['Bulbasaur', 'Squirtle', 'Charmander', 'Pikachu'],
-				},
-				number: {
-					description: 'Numbers work!',
-					minimum: 42,
-					maximum: 1337,
-				},
-				boolean: {
-					description: 'Are boolean supported?',
-					type: 'boolean',
-				},
-				string: {
-					type: 'string',
-				},
-				reference: {
-					description: 'JSON schemas can be referenced, even recursively',
-					$ref: '#',
-				},
-				array: {
-					description: 'It also works in arrays',
-					items: {
-						$ref: '#',
-					},
-				},
-			},
-		},
-	}],
-})
+	schemas: [sampleSchema],
+}
 
-/**
- *
- * @param {string|DONT_UPDATE_CONTENT.} content
- * @param editorRef
- * @param onTextChanged
- * @param {string} [uri]
- * @param rest
- * @return {JSX.Element}
- * @constructor
- */
 function JsonEditor ({
-	content = `{
-  "name": "jsonforms-playground",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "start": [
-      "node scripts/start.js",
-      "node scripts/build.js"
-    ],
-    "build-for-gh-pages": "cross-env GENERATE_SOURCEMAP=false BUILD_PATH=dist PUBLIC_URL=dist node scripts/build.js && mv dist/index.html index.html",
-    "test": "node scripts/test.js"
-  }
-}`, editorRef = {}, onTextChanged = () => {}, uri = 'json://data.json', ...rest
+	initialContent = sampleContent,
+	content,
+	editorRef = {},
+	onTextChanged = () => {},
+	uri = 'json://data.json',
+	schema = sampleSchema,
+	...rest
 }) {
 	const editorContainer = useRef(null)
 	const editor = useRef(null)
 	
 	useLayoutEffect(() => {
 		if (editor.current) { return }
+		
+		languages.json.jsonDefaults.setDiagnosticsOptions(diagnosticsOptions)
 		
 		editor.current = monacoEditor.create(editorContainer.current, {
 			automaticLayout: true,
@@ -118,17 +119,22 @@ function JsonEditor ({
 			onTextChanged(editor.current.getValue())
 		})
 		
-		editorRef.current = editor.current
+		editor.current.setValue(initialContent)
 		
-		return () => void (editor.current.getModel()?.dispose()) // eslint-disable-line no-void
+		window.editor = editorRef.current = editor.current
+		
+		return () => {
+			editor.current.getModel()?.dispose()
+			editor.current.dispose()
+		}
 	}, [])
 	
 	useEffect(() => {
-		console.debug(uri, 'NEW CONTENT', content === DONT_UPDATE_CONTENT ? 'DONT_UPDATE_CONTENT' : '')
-		// console.log(content)
-		if (content !== DONT_UPDATE_CONTENT) {
-			editor.current.setValue(content)
+		console.debug(uri, 'NEW CONTENT', content && content !== editor.current.getValue())
+		if (content === undefined || content === editor.current.getValue()) {
+			return
 		}
+		editor.current.setValue(content)
 	}, [content])
 	
 	return <div {...rest} ref={editorContainer}/>
