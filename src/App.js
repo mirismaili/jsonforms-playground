@@ -5,18 +5,20 @@ import {Box, Grid, makeStyles, Typography} from '@material-ui/core'
 import React, {useEffect, useState} from 'react'
 import ErrorBoundary from './ErrorBoundary'
 import JsonEditor from './JsonEditor'
-import initialSchema from './schema.json'
-import initialUiSchema from './uiSchema.json'
+import defSchema from './schema.json'
+import defUiSchema from './uiSchema.json'
 
 const renderers = materialRenderers
 
-const initialData = {
+const initialData = JSON.parse(localStorage.getItem('data-editor-content')) ?? {
 	name: 'Send email to Adrian',
 	description: 'Confirm if you have passed the subject\nHereby ...',
 	done: true,
 	recurrence: 'Daily',
 	rating: 3,
 }
+const initialSchema = JSON.parse(localStorage.getItem('schema-editor-content')) ?? defSchema
+const initialUiSchema = JSON.parse(localStorage.getItem('ui-schema-editor-content')) ?? defUiSchema
 
 const useStyles = makeStyles((theme) => ({
 	container: {
@@ -226,7 +228,9 @@ function Editor ({
 		
 		console.debug(`${editorName} will be updated`)
 		
-		setContent(JSON.stringify(data, null, 2))
+		const newContent = JSON.stringify(data, null, 2)
+		setContent(newContent)
+		localStorage.setItem(editorName + '-content', newContent)
 		setContentUpdatedFromEditor(false)
 		setParsedContent(data)
 	}, [data])
@@ -234,6 +238,7 @@ function Editor ({
 	const onTextChanged = (newContent) => {
 		console.debug(`${editorName.toUpperCase()}: New content`/*, newContent*/)
 		setContent(newContent)
+		localStorage.setItem(editorName + '-content', newContent)
 		setContentUpdatedFromEditor(true)
 	}
 	
