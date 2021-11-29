@@ -2,7 +2,7 @@ import deepEqual from '@graphix/deep-equal'
 import {materialCells, materialRenderers} from '@jsonforms/material-renderers'
 import {JsonForms} from '@jsonforms/react'
 import {Box, Grid, makeStyles, Typography} from '@material-ui/core'
-import React, {useEffect, useState} from 'react'
+import React, {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react'
 import ErrorBoundary from './ErrorBoundary'
 import JsonEditor from './JsonEditor'
 import defSchema from './schema.json'
@@ -25,7 +25,7 @@ const useStyles = makeStyles((theme) => ({
 		margin: 0,
 		padding: theme.spacing(1),
 		width: '100%',
-		flexGrow: 1,
+		height: '100vh',
 	},
 	form: {
 		padding: theme.spacing(1),
@@ -61,6 +61,7 @@ const useStyles = makeStyles((theme) => ({
 
 function App () {
 	const classes = useStyles()
+	const {hash} = useLocation()
 	
 	const [data, setData] = useState()
 	const [dataError, setDataError] = useState('') // noinspection JSCheckFunctionSignatures
@@ -76,7 +77,11 @@ function App () {
 	return (
 			<>
 				<Grid container spacing={2} className={classes.container}>
-					<Grid item xs={12} md={6} xl={3} className={classes.editorsGrid}>
+					<Grid
+							item xs={12} md={6} xl={hash.startsWith('#') ? 6 : 3}
+							style={hash === '#1' ? {height: '100%'} : hash === '#2' ? {display: 'none'} : {}}
+							className={classes.editorsGrid}
+					>
 						<Editor
 								initialData={initialSchema}
 								data={schema}
@@ -89,7 +94,11 @@ function App () {
 						/>
 					</Grid>
 					
-					<Grid item xs={12} md={6} xl={3} className={classes.editorsGrid}>
+					<Grid
+							item xs={12} md={6} xl={hash.startsWith('#') ? 6 : 3}
+							style={hash === '#1' ? {height: '100%'} : hash === '#2' ? {display: 'none'} : {}}
+							className={classes.editorsGrid}
+					>
 						<Editor
 								initialData={initialUiSchema}
 								data={uiSchema}
@@ -102,7 +111,11 @@ function App () {
 						/>
 					</Grid>
 					
-					<Grid item xs={12} md={6} xl={3} className={classes.editorsGrid}>
+					<Grid
+							item xs={12} md={6} xl={hash.startsWith('#') ? 6 : 3}
+							style={hash === '#2' ? {height: '100%'} : hash === '#1' ? {display: 'none'} : {}}
+							className={classes.editorsGrid}
+					>
 						<Editor
 								initialData={initialData}
 								data={data}
@@ -115,7 +128,10 @@ function App () {
 						/>
 					</Grid>
 					
-					<Grid item xs={12} md={6} xl={3}>
+					<Grid
+							item xs={12} md={6} xl={hash.startsWith('#') ? 6 : 3}
+							style={hash === '#2' ? {height: '100%'} : hash === '#1' ? {display: 'none'} : {}}
+					>
 						<div className={classes.form}>
 							<ErrorBoundary setError={setJsonFormError}>
 								{jsonFormError
@@ -187,14 +203,36 @@ function Editor ({
 	const [parsedContent, setParsedContent] = useState()
 	const [content, setContent] = useState()
 	const [contentUpdatedFromEditor, setContentUpdatedFromEditor] = useState(false)
+	const [contentUpdatedFromLocalStorage, setContentUpdatedFromLocalStorage] = useState(false)
+	
+	const syncWithStorage = useCallback((event) => {
+		if (event.key === `${editorName}-content`) {
+			setContent(event.newValue)
+			setContentUpdatedFromLocalStorage(true)
+		}
+	}, [])
 	
 	useEffect(() => {
-		console.debug(`useEffect: ${dataName} content`,/* content,*/ contentUpdatedFromEditor || data !== parsedContent)
+		window.addEventListener('storage', syncWithStorage)
+		return () => {
+			window.removeEventListener('storage', syncWithStorage)
+		}
+	}, [])
+	
+	useEffect(() => {
+		console.debug(`useEffect: ${dataName} content`, /* content, */ contentUpdatedFromEditor || data !== parsedContent)
 		
 		if (content === undefined) return
 		
 		if (!contentUpdatedFromEditor && data === parsedContent) {
 			return
+		}
+		
+		if (!contentUpdatedFromLocalStorage) {
+			localStorage.setItem(editorName + '-content', content)
+		}
+		else {
+			setContentUpdatedFromLocalStorage(false)
 		}
 		
 		try {
@@ -206,7 +244,7 @@ function Editor ({
 	}, [content])
 	
 	useEffect(() => {
-		console.debug(`useEffect: ${dataName} parsedContent`/*, parsedContent*/)
+		console.debug(`useEffect: ${dataName} parsedContent`/*, parsedContent */)
 		
 		if (parsedContent === undefined) return
 		
@@ -220,7 +258,7 @@ function Editor ({
 	}, [parsedContent])
 	
 	useEffect(() => {
-		console.debug(`useEffect: ${dataName} data`, /*data,*/ !deepEqual(data, parsedContent))
+		console.debug(`useEffect: ${dataName} data`, /* data, */ !deepEqual(data, parsedContent))
 		
 		if (data === undefined) return
 		
@@ -236,9 +274,8 @@ function Editor ({
 	}, [data])
 	
 	const onTextChanged = (newContent) => {
-		console.debug(`${editorName.toUpperCase()}: New content`/*, newContent*/)
+		console.debug(`${editorName.toUpperCase()}: New content`/*, newContent */)
 		setContent(newContent)
-		localStorage.setItem(editorName + '-content', newContent)
 		setContentUpdatedFromEditor(true)
 	}
 	
@@ -255,4 +292,30 @@ function Editor ({
 				<Typography color="textSecondary" className={classes.editorLabel}>{dataName}</Typography>
 			</div>
 	)
+}
+
+// Temporary as a Hook. If you need this in more than one component use it in a Context-Provider.
+function useLocation () {
+	// https://stackoverflow.com/a/46428962/5318303
+	const [location, setLocation] = useState(() => window.location)
+	const hrefRef = useRef(window.location.href)
+	
+	useLayoutEffect(() => {
+		const observer = new MutationObserver(mutations =>
+				mutations.forEach(_ => {
+					const newLocation = window.location
+					if (hrefRef.current !== newLocation.href) {
+						hrefRef.current = newLocation.href
+						setLocation({...newLocation})
+					}
+				}))
+		
+		observer.observe(document.body, {childList: true})
+		
+		return () => {
+			observer.disconnect()
+		}
+	}, [])
+	
+	return location
 }
