@@ -107,6 +107,8 @@ function JsonEditor({
       model: monacoEditor.createModel('', 'json', Uri.parse(uri)),
       theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'vs-dark' : 'vs-light',
       fontSize: '16px',
+      autoIndent: 'full',
+      tabSize: 2,
       lineNumbers: 'on',
       scrollBeyondLastLine: false,
       readOnly: false,
@@ -139,7 +141,5 @@ function JsonEditor({
   
   return <div {...rest} ref={editorContainer}/>
 }
-
-export class DONT_UPDATE_CONTENT {}
 
 export default React.memo(JsonEditor)

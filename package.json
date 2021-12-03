@@ -1,12 +1,17 @@
 {
   "name": "jsonforms-playground",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
-    "start": "cross-env FAST_REFRESH=false node scripts/start.js",
+    "start": "node scripts/start.js",
     "build": "node scripts/build.js",
     "build-for-gh-pages": "cross-env GENERATE_SOURCEMAP=false BUILD_PATH=dist PUBLIC_URL=dist node scripts/build.js && mv dist/index.html index.html",
-    "test": "node scripts/test.js"
+    "test": "node scripts/test.js",
+    "patch-version": "npm version patch --no-git-tag-version",
+    "increase-minor-version": "npm version minor --no-git-tag-version",
+    "increase-major-version": "npm version major --no-git-tag-version",
+    "tag-this-version": "node -e \"require('child_process').execSync('git tag v' + require('./package.json').version)\"",
+    "build-version": "node -r child_process -p \"child_process.execSync('git rev-list --count HEAD').toString().trim() - child_process.execSync('git rev-list --count v' + require('./package.json').version).toString().trim()\""
   },
   "dependencies": {
     "@babel/core": "^7.14.2",

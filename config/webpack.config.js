@@ -1,7 +1,6 @@
-'use strict'
-
 const fs = require('fs')
 const path = require('path')
+const {execSync} = require('child_process')
 const webpack = require('webpack')
 const resolve = require('resolve')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
@@ -25,6 +24,7 @@ const ForkTsCheckerWebpackPlugin =
 				? require('react-dev-utils/ForkTsCheckerWarningWebpackPlugin')
 				: require('react-dev-utils/ForkTsCheckerWebpackPlugin')
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin')
+const packageJson = require(paths.appPackageJson)
 
 const createEnvironmentHash = require('./webpack/persistentCache/createEnvironmentHash')
 
@@ -145,48 +145,53 @@ module.exports = function (webpackEnv) {
 					sourceMap: isEnvProduction ? shouldUseSourceMap : isEnvDevelopment,
 				},
 			},
-		].filter(Boolean)
-		if (preProcessor) {
-			loaders.push(
-					{
-						loader: require.resolve('resolve-url-loader'),
-						options: {
-							sourceMap: isEnvProduction ? shouldUseSourceMap : isEnvDevelopment,
-							root: paths.appSrc,
-						},
-					},
-					{
-						loader: require.resolve(preProcessor),
-						options: {
-							sourceMap: true,
-						},
-					},
-			)
-		}
-		return loaders
-	}
-	
-	return {
-		target: ['browserslist'],
-		mode: isEnvProduction ? 'production' : isEnvDevelopment && 'development',
-		// Stop compilation early in production
-		bail: isEnvProduction,
-		devtool: isEnvProduction
-				? shouldUseSourceMap
-						? 'source-map'
-						: false
-				: isEnvDevelopment && 'cheap-module-source-map',
-		// These are the "entry points" to our application.
-		// This means they will be the "root" imports that are included in JS bundle.
-		entry: paths.appIndexJs,
-		output: {
-			// The build folder.
-			path: paths.appBuild,
-			// Add /* filename */ comments to generated require()s in the output.
-			pathinfo: isEnvDevelopment,
-			// There will be one main bundle, and one file per asynchronous chunk.
-			// In development, it does not produce real files.
-			filename: isEnvProduction
+    ].filter(Boolean)
+    if (preProcessor) {
+      loaders.push(
+        {
+          loader: require.resolve('resolve-url-loader'),
+          options: {
+            sourceMap: isEnvProduction ? shouldUseSourceMap : isEnvDevelopment,
+            root: paths.appSrc,
+          },
+        },
+        {
+          loader: require.resolve(preProcessor),
+          options: {
+            sourceMap: true,
+          },
+        },
+      )
+    }
+    return loaders
+  }
+  
+  const currentCommitNum = +execSync('git rev-list --count HEAD 2>/dev/null || echo 0').toString().trim()
+  const lastVersionCommitNum =
+    +execSync(`git rev-list --count v${packageJson.version} 2>/dev/null || echo 0`).toString().trim()
+  const buildVersion = currentCommitNum - lastVersionCommitNum
+  
+  return {
+    target: ['browserslist'],
+    mode: isEnvProduction ? 'production' : isEnvDevelopment && 'development',
+    // Stop compilation early in production
+    bail: isEnvProduction,
+    devtool: isEnvProduction
+      ? shouldUseSourceMap
+        ? 'source-map'
+        : false
+      : isEnvDevelopment && 'cheap-module-source-map',
+    // These are the "entry points" to our application.
+    // This means they will be the "root" imports that are included in JS bundle.
+    entry: paths.appIndexJs,
+    output: {
+      // The build folder.
+      path: paths.appBuild,
+      // Add /* filename */ comments to generated require()s in the output.
+      pathinfo: isEnvDevelopment,
+      // There will be one main bundle, and one file per asynchronous chunk.
+      // In development, it does not produce real files.
+      filename: isEnvProduction
 					? 'static/js/[name].[contenthash:8].js'
 					: isEnvDevelopment && 'static/js/[name].bundle.js',
 			// There are also additional JS chunk files if you use code splitting.
@@ -542,27 +547,32 @@ module.exports = function (webpackEnv) {
 			].filter(Boolean),
 		},
 		plugins: [
-			// Generates an `index.html` file with the <script> injected.
-			new HtmlWebpackPlugin(
-					Object.assign(
-							{},
-							{
-								inject: true,
-								template: paths.appHtml,
-							},
-							isEnvProduction
-									? {
-										minify: {
-											removeComments: true,
-											collapseWhitespace: true,
-											removeRedundantAttributes: true,
-											useShortDoctype: true,
-											removeEmptyAttributes: true,
-											removeStyleLinkTypeAttributes: true,
-											keepClosingSlash: true,
-											minifyJS: true,
-											minifyCSS: true,
-											minifyURLs: true,
+      new webpack.DefinePlugin({
+        __APP_VERSION__: `"${packageJson.version}-${buildVersion}"`,
+        __BUILD_TIME__: new Date().getTime(), // UTC timestamp in ms
+        __JSONFORMS_VERSION__: `"${packageJson.dependencies['@jsonforms/core']}"`,
+      }),
+      // Generates an `index.html` file with the <script> injected.
+      new HtmlWebpackPlugin(
+        Object.assign(
+          {},
+          {
+            inject: true,
+            template: paths.appHtml,
+          },
+          isEnvProduction
+            ? {
+              minify: {
+                removeComments: true,
+                collapseWhitespace: true,
+                removeRedundantAttributes: true,
+                useShortDoctype: true,
+                removeEmptyAttributes: true,
+                removeStyleLinkTypeAttributes: true,
+                keepClosingSlash: true,
+                minifyJS: true,
+                minifyCSS: true,
+                minifyURLs: true,
 										},
 									}
 									: undefined,
