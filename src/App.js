@@ -2,9 +2,10 @@ import deepEqual from '@graphix/deep-equal'
 import {materialCells, materialRenderers} from '@jsonforms/material-renderers'
 import {JsonForms} from '@jsonforms/react'
 import {Box, Grid, makeStyles, Typography} from '@material-ui/core'
-import React, {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react'
+import React, {useCallback, useEffect, useState} from 'react'
 import ErrorBoundary from './ErrorBoundary'
 import JsonEditor from './JsonEditor'
+import {useLocation} from './LocationProvider.js'
 import defSchema from './schema.json'
 import defUiSchema from './uiSchema.json'
 
@@ -297,29 +298,3 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: theme.spacing(2), // Fix monaco-editor over-size issue
   },
 }))
-
-// Temporary as a Hook. If you need this in more than one component use it in a Context-Provider.
-function useLocation() {
-  // https://stackoverflow.com/a/46428962/5318303
-  const [location, setLocation] = useState(() => window.location)
-  const hrefRef = useRef(window.location.href)
-  
-  useLayoutEffect(() => {
-    const observer = new MutationObserver(mutations =>
-        mutations.forEach(_ => {
-          const newLocation = window.location
-          if (hrefRef.current !== newLocation.href) {
-            hrefRef.current = newLocation.href
-            setLocation({...newLocation})
-          }
-        }))
-    
-    observer.observe(document.body, {childList: true})
-    
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
-  
-  return location
-}

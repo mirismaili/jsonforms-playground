@@ -2,11 +2,14 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import App from './App'
 import './index.css'
+import LocationProvider from './LocationProvider'
 import reportWebVitals from './reportWebVitals'
 
 ReactDOM.render(
   <React.StrictMode>
-    <App/>
+    <LocationProvider>
+      <App/>
+    </LocationProvider>
   </React.StrictMode>,
   document.getElementById('root'),
 )
